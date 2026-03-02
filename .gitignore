@@ -1,0 +1,34 @@
+# Build directories
+build/
+devel/
+install/
+
+# IDEs and Editors
+.vscode/
+.vs/
+*.user
+
+# Compiled object files
+*.o
+*.obj
+*.so
+*.dll
+*.class
+*.exe
+
+# Arduino caches
+*.hex
+*.elf
+*.bin
+
+# Node.js
+node_modules/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# OS generated files
+.DS_Store
+Thumbs.db
