@@ -1,0 +1,16 @@
+# udev rule to create a stable symlink for the Arduino Mega on RPi5.
+#
+# Place this file at: /etc/udev/rules.d/99-arduino-mega.rules
+# Then reload rules:
+#   sudo udevadm control --reload-rules && sudo udevadm trigger
+#
+# Find your Arduino's idVendor and idProduct with:
+#   udevadm info -a -n /dev/ttyACM0 | grep -E 'idVendor|idProduct'
+#
+# Typical values for Arduino Mega 2560:
+#   idVendor = 2341, idProduct = 0042
+#
+# After this rule is applied, the board will always appear as /dev/arduino_mega
+# regardless of which USB port you use on the RPi5.
+
+SUBSYSTEM=="tty", ATTRS{idVendor}=="2341", ATTRS{idProduct}=="0042", SYMLINK+="arduino_mega", MODE="0666"
