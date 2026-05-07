@@ -15,6 +15,45 @@ from geometry_msgs.msg import Twist
 
 import sys
 import threading
+import termios
+import tty
+
+
+# ── Velocity presets (tune these for your robot) ────────────────────
+LINEAR_VEL = 0.5    # m/s (default was 0.2)
+ANGULAR_VEL = 2.0   # rad/s (default was 1.0)
+CURVE_ANGULAR = 1.0  # rad/s for diagonal moves
+
+# Key → (linear.x, angular.z)
+KEY_BINDINGS = {
+    'i': ( LINEAR_VEL,  0.0),           # forward
+    ',': (-LINEAR_VEL,  0.0),           # backward
+    'j': ( 0.0,         ANGULAR_VEL),   # spin left  (CCW)
+    'l': ( 0.0,        -ANGULAR_VEL),   # spin right (CW)
+    'u': ( LINEAR_VEL,  CURVE_ANGULAR), # curve forward-left
+    'o': ( LINEAR_VEL, -CURVE_ANGULAR), # curve forward-right
+    'm': (-LINEAR_VEL, -CURVE_ANGULAR), # curve backward-left
+    '.': (-LINEAR_VEL,  CURVE_ANGULAR), # curve backward-right
+    'k': ( 0.0,  0.0),                 # stop
+    ' ': ( 0.0,  0.0),                 # stop (spacebar)
+}
+
+USAGE_TEXT = """
+─────────────────────────────────
+  Standard Teleop — Foxbot 2WD
+─────────────────────────────────
+    U  I  O
+    J  K  L
+    M  ,  .
+
+  I/, : Forward / Backward
+  J/L : Spin Left / Spin Right
+  U/O : Curve Forward-Left / Right
+  M/. : Curve Backward-Left / Right
+  K   : STOP
+  ESC : Quit
+─────────────────────────────────
+"""
 
 
 class CmdVelPublisher(Node):
@@ -26,40 +65,96 @@ class CmdVelPublisher(Node):
         self._linear_x = 0.0
         self._angular_z = 0.0
         self._lock = threading.Lock()
+        self._running = True
 
         # Publish at 10 Hz so the motor driver watchdog stays happy
         self.timer = self.create_timer(0.1, self._publish)
 
-        # Spawn a background thread for blocking stdin input
-        self._input_thread = threading.Thread(target=self._read_input, daemon=True)
+        # Spawn a background thread for blocking key reads
+        self._input_thread = threading.Thread(target=self._read_keys, daemon=True)
         self._input_thread.start()
 
-        self.get_logger().info(
-            'cmd_vel_publisher ready.\n'
-            '  Enter "<linear_x> <angular_z>" (e.g. "0.2 0.0").\n'
-            '  Press Ctrl+C to quit.'
-        )
+        self.get_logger().info('Teleop ready — use U-I-O / J-K-L to drive.')
+        print(USAGE_TEXT)
 
-    def _read_input(self):
-        """Blocking loop that reads velocity from stdin."""
+    # ── Terminal raw-mode key reader ────────────────────────────────
+
+    @staticmethod
+    def _get_key():
+        """Read a single keypress without waiting for Enter (Linux only)."""
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
         try:
-            while rclpy.ok():
-                line = input('cmd_vel > ')
-                parts = line.strip().split()
-                if len(parts) != 2:
-                    print('  ⚠  Enter exactly two numbers: <linear_x> <angular_z>')
-                    continue
-                try:
-                    lx, az = float(parts[0]), float(parts[1])
-                except ValueError:
-                    print('  ⚠  Invalid numbers. Try again.')
-                    continue
-                with self._lock:
-                    self._linear_x = lx
-                    self._angular_z = az
-                self.get_logger().info(f'Set cmd_vel: linear.x={lx:.3f}, angular.z={az:.3f}')
-        except (EOFError, KeyboardInterrupt):
-            pass
+            tty.setraw(fd)
+            ch = sys.stdin.read(1)
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        return ch
+
+    def _read_keys(self):
+        """Background thread: read keys and update velocity state."""
+        global LINEAR_VEL, ANGULAR_VEL, CURVE_ANGULAR
+        try:
+            while self._running and rclpy.ok():
+                key = self._get_key()
+
+                # ESC → signal shutdown
+                if ord(key) == 27:
+                    self.get_logger().info('ESC pressed — shutting down.')
+                    self._running = False
+                    with self._lock:
+                        self._linear_x = 0.0
+                        self._angular_z = 0.0
+                    rclpy.shutdown()
+                    break
+
+                key = key.lower()
+
+                # Speed control
+                if key == 'q':
+                    LINEAR_VEL *= 1.1
+                    ANGULAR_VEL *= 1.1
+                    self.get_logger().info(f'Speeds increased: linear={LINEAR_VEL:.2f}, angular={ANGULAR_VEL:.2f}')
+                elif key == 'z':
+                    LINEAR_VEL *= 0.9
+                    ANGULAR_VEL *= 0.9
+                    self.get_logger().info(f'Speeds decreased: linear={LINEAR_VEL:.2f}, angular={ANGULAR_VEL:.2f}')
+                elif key == 'w':
+                    LINEAR_VEL *= 1.1
+                    self.get_logger().info(f'Linear speed increased: {LINEAR_VEL:.2f}')
+                elif key == 'x':
+                    LINEAR_VEL *= 0.9
+                    self.get_logger().info(f'Linear speed decreased: {LINEAR_VEL:.2f}')
+                elif key == 'e':
+                    ANGULAR_VEL *= 1.1
+                    self.get_logger().info(f'Angular speed increased: {ANGULAR_VEL:.2f}')
+                elif key == 'c':
+                    ANGULAR_VEL *= 0.9
+                    self.get_logger().info(f'Angular speed decreased: {ANGULAR_VEL:.2f}')
+
+                # Movement control
+                elif key in KEY_BINDINGS:
+                    # Refresh values based on current presets
+                    if key == 'i': lx, az = LINEAR_VEL, 0.0
+                    elif key == ',': lx, az = -LINEAR_VEL, 0.0
+                    elif key == 'j': lx, az = 0.0, ANGULAR_VEL   # Pure Spin Left
+                    elif key == 'l': lx, az = 0.0, -ANGULAR_VEL  # Pure Spin Right
+                    elif key == 'u': lx, az = LINEAR_VEL, ANGULAR_VEL / 2.0
+                    elif key == 'o': lx, az = LINEAR_VEL, -ANGULAR_VEL / 2.0
+                    elif key == 'm': lx, az = -LINEAR_VEL, -ANGULAR_VEL / 2.0
+                    elif key == '.': lx, az = -LINEAR_VEL, ANGULAR_VEL / 2.0
+                    elif key == 'k' or key == ' ': lx, az = 0.0, 0.0
+                    
+                    with self._lock:
+                        self._linear_x = lx
+                        self._angular_z = az
+                    self.get_logger().info(
+                        f'cmd_vel: linear.x={lx:+.2f}  angular.z={az:+.2f}'
+                    )
+        except Exception as e:
+            self.get_logger().error(f'Error reading keys: {e}')
+
+    # ── Timer callback — continuous publisher ───────────────────────
 
     def _publish(self):
         msg = Twist()
@@ -77,8 +172,12 @@ def main(args=None):
     except KeyboardInterrupt:
         pass
     finally:
+        # Ensure motors stop on exit
+        stop_msg = Twist()
+        node.publisher.publish(stop_msg)
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == '__main__':

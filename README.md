@@ -50,15 +50,31 @@ ros2 launch motor_control robot_bringup.launch.py serial_port:=/dev/ttyACM0
 source install/setup.bash
 ros2 run direction_control cmd_vel_publisher
 
-# 7. Or run the standalone motor test
-ros2 run control_cu_functii motor_test_node
+### Keyboard Mapping (Standard Layout)
+| Key | Action |
+|:---:|:---|
+| **I** | Forward |
+| **,** | Backward |
+| **J** | Spin Left |
+| **L** | Spin Right |
+| **U** / **O** | Curve Forward Left / Right |
+| **M** / **.** | Curve Backward Left / Right |
+| **K** / **Space** | **STOP** |
+| **ESC** | Quit Teleop |
+
+### Speed Control
+| Key | Action |
+|:---:|:---|
+| **Q** / **Z** | Increase / Decrease overall speed |
+| **W** / **X** | Increase / Decrease linear speed only |
+| **E** / **C** | Increase / Decrease angular speed only |
 ```
 
 ## Pin Mapping (Arduino Mega)
 
 | Function | Pin | Mode |
 |----------|-----|------|
-| Left motor PWM | D3 | PWM |
+| Left motor PWM | D4 | PWM |
 | Right motor PWM | D5 | PWM |
 | Left motor direction A | D22 | Digital Out |
 | Left motor direction B | D23 | Digital Out |

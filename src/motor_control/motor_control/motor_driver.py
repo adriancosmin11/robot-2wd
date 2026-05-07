@@ -43,8 +43,8 @@ class MotorDriver:
         self.board = pyfirmata.ArduinoMega(serial_port)
 
         # PWM pins (speed control, values 0.0-1.0)
-        self.pwm_left = self.board.get_pin('d:3:p')
-        self.pwm_right = self.board.get_pin('d:5:p')
+        self.pwm_left = self.board.get_pin('d:4:p')  # Pin 4 as per your code
+        self.pwm_right = self.board.get_pin('d:5:p') # Pin 5
 
         # Direction pins (digital output)
         self.m1_ina = self.board.get_pin('d:22:o')
@@ -91,20 +91,14 @@ class MotorDriver:
         self._set_speed(vel, vel)
 
     def turn_right(self, vel: float = 1.0):
-        """Pivot right: left motor forward, right motor stopped."""
-        self.m1_ina.write(1)
-        self.m1_inb.write(0)
-        self.m2_ina.write(0)
-        self.m2_inb.write(0)
-        self._set_speed(vel, 0.0)
+        """Pivot right: left motor at full speed, right motor at half speed."""
+        self._set_direction(left_fwd=True, right_fwd=True)
+        self._set_speed(vel, vel / 2.0)
 
     def turn_left(self, vel: float = 1.0):
-        """Pivot left: right motor forward, left motor stopped."""
-        self.m1_ina.write(0)
-        self.m1_inb.write(0)
-        self.m2_ina.write(1)
-        self.m2_inb.write(0)
-        self._set_speed(0.0, vel)
+        """Pivot left: right motor at full speed, left motor at half speed."""
+        self._set_direction(left_fwd=True, right_fwd=True)
+        self._set_speed(vel / 2.0, vel)
 
     # ── cmd_vel-style movement (linear + angular) ───────────────────
 
@@ -156,35 +150,35 @@ class MotorDriver:
 
     def drive_continuous(self, linear_x: float, angular_z: float):
         """
-        Non-blocking differential drive from a Twist message.
-
-        Used for continuous ``/cmd_vel`` streaming (e.g. from teleop or nav2).
-        - ``linear_x``  — m/s  (positive = forward)
-        - ``angular_z``  — rad/s (positive = counter-clockwise)
-
-        Call ``power_off()`` when no new command arrives within a timeout.
+        Non-blocking differential drive logic with proportional scaling.
         """
         if linear_x == 0.0 and angular_z == 0.0:
             self.power_off()
             return
 
-        # Simple differential drive: v_left = v - ω·L/2, v_right = v + ω·L/2
+        # Differential drive math
         wheel_base_m = WHEEL_DISTANCE_CM / 100.0
         v_left = linear_x - angular_z * wheel_base_m / 2.0
         v_right = linear_x + angular_z * wheel_base_m / 2.0
 
-        # Normalise to [-1, 1] range based on max expected speed (m/s)
-        max_speed = VELOCITY_100_CM_S / 100.0  # convert cm/s → m/s
-        norm_left = max(-1.0, min(v_left / max_speed, 1.0))
-        norm_right = max(-1.0, min(v_right / max_speed, 1.0))
+        max_speed = VELOCITY_100_CM_S / 100.0
 
-        # Set direction per wheel
-        self.m1_ina.write(1 if norm_left >= 0 else 0)
-        self.m1_inb.write(0 if norm_left >= 0 else 1)
-        self.m2_ina.write(1 if norm_right >= 0 else 0)
-        self.m2_inb.write(0 if norm_right >= 0 else 1)
+        # Proportional scaling to preserve turning radius if requested speed exceeds max
+        max_requested = max(abs(v_left), abs(v_right))
+        if max_requested > max_speed:
+            v_left = v_left * (max_speed / max_requested)
+            v_right = v_right * (max_speed / max_requested)
 
-        self._set_speed(abs(norm_left), abs(norm_right))
+        v_l = max(-1.0, min(v_left / max_speed, 1.0))
+        v_r = max(-1.0, min(v_right / max_speed, 1.0))
+
+        # Set directions
+        self.m1_ina.write(1 if v_l >= 0 else 0)
+        self.m1_inb.write(0 if v_l >= 0 else 1)
+        self.m2_ina.write(1 if v_r >= 0 else 0)
+        self.m2_inb.write(0 if v_r >= 0 else 1)
+
+        self._set_speed(abs(v_l), abs(v_r))
 
     def shutdown(self):
         """Stop motors and close the serial connection."""
