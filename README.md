@@ -74,7 +74,7 @@ ros2 run direction_control cmd_vel_publisher
 
 | Function | Pin | Mode |
 |----------|-----|------|
-| Left motor PWM | D4 | PWM |
+| Left motor PWM | D3 | PWM |
 | Right motor PWM | D5 | PWM |
 | Left motor direction A | D22 | Digital Out |
 | Left motor direction B | D23 | Digital Out |

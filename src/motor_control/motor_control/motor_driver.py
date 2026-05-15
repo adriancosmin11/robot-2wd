@@ -43,8 +43,8 @@ class MotorDriver:
         self.board = pyfirmata.ArduinoMega(serial_port)
 
         # PWM pins (speed control, values 0.0-1.0)
-        self.pwm_left = self.board.get_pin('d:4:p')  # Pin 4 as per your code
-        self.pwm_right = self.board.get_pin('d:5:p') # Pin 5
+        self.pwm_left = self.board.get_pin('d:3:p')  # Reverting back to Pin 3!
+        self.pwm_right = self.board.get_pin('d:5:p')
 
         # Direction pins (digital output)
         self.m1_ina = self.board.get_pin('d:22:o')
