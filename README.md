@@ -81,6 +81,65 @@ ros2 run direction_control cmd_vel_publisher
 | Right motor direction A | D24 | Digital Out |
 | Right motor direction B | D25 | Digital Out |
 
+## SLAM (Mapping with RPLidar)
+
+The `my_slam_package` provides a complete SLAM pipeline using an RPLidar and `slam_toolbox`, with **Foxglove Studio** for browser-based visualization (no ROS install needed on the viewing machine).
+
+### Prerequisites
+
+```bash
+# Install SLAM dependencies (if not already installed)
+sudo apt install ros-jazzy-rplidar-ros ros-jazzy-slam-toolbox \
+                 ros-jazzy-robot-state-publisher ros-jazzy-foxglove-bridge
+```
+
+### Running SLAM
+
+```bash
+# Terminal 1 (on RPi5): Start motors
+ros2 launch motor_control robot_bringup.launch.py
+
+# Terminal 2 (on RPi5): Start SLAM + Foxglove Bridge
+ros2 launch my_slam_package slam.launch.py
+
+# Terminal 3 (on RPi5 or remote): Teleop to drive around
+ros2 run direction_control cmd_vel_publisher
+```
+
+### Visualizing (from any device)
+
+1. Open **https://app.foxglove.dev** in any browser (laptop, tablet, phone)
+2. Click **"Open connection"**
+3. Select **"Foxglove WebSocket"**
+4. Enter: `ws://<ROBOT_IP>:8765`
+5. Add panels: **Map**, **3D**, **Raw Messages**, **Plot**, etc.
+
+> **Tip:** Save your Foxglove layout so you don't have to reconfigure panels each time.
+
+### Launch Arguments
+
+| Argument | Default | Description |
+|----------|---------|-------------|
+| `lidar_serial_port` | `/dev/ttyUSB0` | Serial port for the RPLidar |
+| `lidar_baudrate` | `115200` | Baud rate (115200 for A1/A2, 256000 for A3/S1) |
+| `use_foxglove` | `true` | Start the Foxglove Bridge WebSocket server |
+| `foxglove_port` | `8765` | WebSocket port for Foxglove Bridge |
+
+### TF Tree
+
+```
+map ──(slam_toolbox)──▶ odom ──(static)──▶ base_footprint ──(URDF)──▶ base_link ──(URDF)──▶ laser
+```
+
+> **Note:** This robot has no wheel encoders, so `odom → base_footprint` is a static identity transform. All localization comes from slam_toolbox's scan matching. This works well indoors but pure in-place rotation may not be tracked perfectly.
+
+### Saving the Map
+
+```bash
+# Save the current map (while slam_toolbox is running)
+ros2 run nav2_map_server map_saver_cli -f ~/maps/my_map
+```
+
 ## RPi5 Notes
 
 - Ubuntu 24.04 or later recommended

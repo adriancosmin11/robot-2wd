@@ -2,14 +2,20 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>my_slam_package</name>
-  <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <version>0.1.0</version>
+  <description>SLAM integration for the Foxbot 2WD robot — RPLidar + slam_toolbox on ROS 2 Jazzy</description>
   <maintainer email="miruna@todo.todo">miruna</maintainer>
-  <license>TODO: License declaration</license>
+  <license>MIT</license>
 
-  <depend>rplidar_ros</depend>
-  <depend>slam_toolbox</depend>
-  <depend>tf2_ros</depend>
+  <!-- Runtime dependencies -->
+  <exec_depend>rplidar_ros</exec_depend>
+  <exec_depend>slam_toolbox</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>foxglove_bridge</exec_depend>
+
+  <!-- Build dependencies -->
+  <buildtool_depend>ament_python</buildtool_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

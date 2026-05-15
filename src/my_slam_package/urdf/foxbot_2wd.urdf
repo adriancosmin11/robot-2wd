@@ -1,0 +1,98 @@
+<?xml version="1.0"?>
+<!--
+  Minimal URDF for the Foxbot 2WD robot.
+
+  Purpose: provide the base_link → laser_frame static transform so that
+  robot_state_publisher can broadcast it to TF2.  slam_toolbox needs this
+  to relate LaserScan data back to the robot's body frame.
+
+  Physical layout (top-down, X forward):
+
+      ┌───────────────┐
+      │   RPLidar     │  ← laser_frame (centered, 10 cm above base)
+      │               │
+      │  base_link    │  ← origin at center of wheel axle, on the ground
+      │               │
+      ├─(L)───────(R)─┤  ← wheels, 30 cm apart
+      └───────────────┘
+            ↑ X (forward)
+
+  Adjust the <origin xyz="..."/> in the laser joint if your LiDAR is
+  mounted off-center or at a different height.
+-->
+<robot name="foxbot_2wd">
+
+  <!-- ─── Base Link ──────────────────────────────────────────── -->
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <box size="0.22 0.16 0.08"/>
+      </geometry>
+      <origin xyz="0 0 0.04" rpy="0 0 0"/>
+    </visual>
+  </link>
+
+  <!-- base_footprint is on the ground plane directly below base_link.
+       Nav2 and slam_toolbox default to base_footprint as the robot frame. -->
+  <link name="base_footprint"/>
+  <joint name="base_footprint_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="base_footprint"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ─── Laser Link ─────────────────────────────────────────── -->
+  <!--
+    The frame_id published by rplidar_ros must match this link name.
+    Default rplidar_ros frame_id is "laser", so we name this "laser".
+
+    Offset: LiDAR is centered on the robot, ~10 cm above base_link.
+    Adjust xyz if your LiDAR is not centered (e.g. shifted forward).
+  -->
+  <link name="laser">
+    <visual>
+      <geometry>
+        <cylinder length="0.04" radius="0.035"/>
+      </geometry>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+    </visual>
+  </link>
+
+  <joint name="laser_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="laser"/>
+    <origin xyz="0.0 0.0 0.10" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ─── Wheel Links (visual only, no encoders) ────────────── -->
+  <link name="left_wheel">
+    <visual>
+      <geometry>
+        <cylinder length="0.03" radius="0.04"/>
+      </geometry>
+      <origin xyz="0 0 0" rpy="1.5708 0 0"/>
+    </visual>
+  </link>
+
+  <joint name="left_wheel_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="left_wheel"/>
+    <origin xyz="0.0 0.15 0.0" rpy="0 0 0"/>
+  </joint>
+
+  <link name="right_wheel">
+    <visual>
+      <geometry>
+        <cylinder length="0.03" radius="0.04"/>
+      </geometry>
+      <origin xyz="0 0 0" rpy="1.5708 0 0"/>
+    </visual>
+  </link>
+
+  <joint name="right_wheel_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="right_wheel"/>
+    <origin xyz="0.0 -0.15 0.0" rpy="0 0 0"/>
+  </joint>
+
+</robot>
