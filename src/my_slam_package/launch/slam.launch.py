@@ -127,7 +127,7 @@ def generate_launch_description():
         output='screen',
         parameters=[{
             'serial_port': LaunchConfiguration('lidar_serial_port'),
-            'serial_baudrate': LaunchConfiguration('lidar_baudrate'),
+            'serial_baudrate': 115200,
             'frame_id': 'laser',
             'inverted': False,
             'angle_compensate': True,
