@@ -65,9 +65,16 @@ def generate_launch_description():
         description='WebSocket port for Foxglove Bridge',
     )
 
+    use_rviz_arg = DeclareLaunchArgument(
+        'use_rviz',
+        default_value='false',
+        description='Start RViz2 for visualization',
+    )
+
     # ── Paths ────────────────────────────────────────────────────────
     urdf_file = os.path.join(pkg_share, 'urdf', 'foxbot_2wd.urdf')
     slam_params_file = os.path.join(pkg_share, 'config', 'slam_toolbox_params.yaml')
+    rviz_config_file = os.path.join(pkg_share, 'rviz', 'slam_view.rviz')
 
     # Read URDF content for robot_state_publisher
     with open(urdf_file, 'r') as f:
@@ -170,16 +177,27 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration('use_foxglove')),
     )
 
+    # ── 6. RViz2 ─────────────────────────────────────────────────────
+    rviz_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        name='rviz2',
+        arguments=['-d', rviz_config_file],
+        condition=IfCondition(LaunchConfiguration('use_rviz')),
+    )
+
     # ── Assemble Launch Description ──────────────────────────────────
     return LaunchDescription([
         lidar_serial_port_arg,
         lidar_baudrate_arg,
         use_foxglove_arg,
         foxglove_port_arg,
+        use_rviz_arg,
         robot_state_publisher_node,
         static_odom_tf,
         rplidar_node,
         slam_toolbox_node,
         foxglove_bridge_node,
         foxglove_info,
+        rviz_node,
     ])

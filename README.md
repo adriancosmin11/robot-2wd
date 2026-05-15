@@ -106,7 +106,7 @@ ros2 launch my_slam_package slam.launch.py
 ros2 run direction_control cmd_vel_publisher
 ```
 
-### Visualizing (from any device)
+### Visualizing in Browser (Foxglove)
 
 1. Open **https://app.foxglove.dev** in any browser (laptop, tablet, phone)
 2. Click **"Open connection"**
@@ -114,7 +114,12 @@ ros2 run direction_control cmd_vel_publisher
 4. Enter: `ws://<ROBOT_IP>:8765`
 5. Add panels: **Map**, **3D**, **Raw Messages**, **Plot**, etc.
 
-> **Tip:** Save your Foxglove layout so you don't have to reconfigure panels each time.
+### Visualizing on your Laptop (RViz)
+
+If you prefer to use RViz locally on your laptop:
+```bash
+ros2 launch my_slam_package slam.launch.py use_rviz:=true use_foxglove:=false
+```
 
 ### Launch Arguments
 
